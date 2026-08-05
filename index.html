@@ -4,14 +4,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>왕숙 푸르지오 월별 공사 현황</title>
+    
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
     
-    <!-- 수식을 깔끔하게 보여주기 위한 MathJax 스크립트 추가 -->
+    <!-- MathJax 설정 및 스크립트 추가 -->
+    <script>
+      MathJax = {
+        tex: {
+          inlineMath: [['$', '$']],
+          displayMath: [['$$', '$$']]
+        }
+      };
+    </script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     
     <!-- 데이터 파일 불러오기 -->
     <script src="data.js"></script>
+    
     <style>
         body { font-family: 'Malgun Gothic', sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; color: #333; }
         .container { max-width: 900px; margin: 0 auto; background: #ffffff; padding: 30px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
@@ -21,15 +31,23 @@
         .content-section { display: flex; gap: 20px; }
         .complex-info { flex: 1; background: #f9f9f9; padding: 20px; border-radius: 8px; border: 1px solid #eee; }
         ul { padding-left: 20px; line-height: 1.8; }
-        .chart-container { position: relative; height: 400px; width: 100%; margin-top: 30px; }
+        
+        /* 모바일 대응: 그래프 스크롤 영역 */
+        .chart-scroll-wrapper { width: 100%; overflow-x: auto; overflow-y: hidden; margin-top: 30px; -webkit-overflow-scrolling: touch; }
+        .chart-inner { min-width: 700px; height: 400px; position: relative; }
+        
         .math-explanation { background-color: #fdfdfd; border: 1px dashed #ccc; padding: 25px; margin-top: 20px; border-radius: 5px; }
         .highlight { color: #e74c3c; font-weight: bold; font-size: 1.1em; }
         a { color: #3498db; text-decoration: none; }
         a:hover { text-decoration: underline; }
         
-        table.history-table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.95em; text-align: center; }
+        /* 모바일 대응: 테이블 및 수식 스크롤 영역 */
+        .scroll-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        
+        table.history-table { width: 100%; min-width: 600px; border-collapse: collapse; margin-top: 15px; font-size: 0.95em; text-align: center; }
         table.history-table th { background-color: #f2f2f2; padding: 12px 10px; border: 1px solid #ddd; font-weight: bold; color: #2c3e50; }
         table.history-table td { padding: 12px 10px; border: 1px solid #ddd; }
+        table.history-table tr:nth-child(even) { background-color: #f9f9f9; }
         
         .table-title { margin-top: 40px; margin-bottom: 5px; color: #2c3e50; font-size: 1.1em; font-weight: bold; border-left: 4px solid #3498db; padding-left: 10px; }
 
@@ -64,32 +82,46 @@
 
     <div class="graph-section">
         <h2>월별 공정률 및 증가율</h2>
-        <div class="chart-container"><canvas id="cumulativeChart"></canvas></div>
-        <div class="chart-container"><canvas id="incrementChart"></canvas></div>
+        
+        <!-- 그래프 영역 가로 스크롤 래퍼 추가 -->
+        <div class="chart-scroll-wrapper">
+            <div class="chart-inner">
+                <canvas id="cumulativeChart"></canvas>
+            </div>
+        </div>
+        
+        <div class="chart-scroll-wrapper">
+            <div class="chart-inner">
+                <canvas id="incrementChart"></canvas>
+            </div>
+        </div>
 
         <div class="math-explanation">
-            <span style="font-size: 1.1em; font-weight: bold; color: #2c3e50;">[추정지연일]</span><br><br>
+            <span style="font-size: 1.1em; font-weight: bold; color: #2c3e50;">[공사진행 추정지연일]</span><br><br>
             - 기준일자: <span id="calc-date"></span><br>
             - 현재 1단지 공정률: <span id="calc-prog1"></span>%<br>
             - 2단지의 동일 공정률 달성 추정일: <span id="calc-reach-date"></span><br><br>
-            <span class="highlight">- 약 <span id="calc-delay"></span>일 차이 (1단지 지연)</span><br><br>
+            <span class="highlight">- 두 단지 간의 공정 시차: 약 <span id="calc-delay"></span>일 차이 (1단지 지연)</span><br><br>
             <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
             <span style="color: #444; font-size: 0.95em; line-height: 1.8;">
                 <span style="color: #2980b9; font-weight: bold; font-size: 1.05em;">계산 방식 (선형 보간법 적용)</span><br>
-                1단지의 현재 공정률을 2단지는 언제 달성했었는지 그 차이(추정지연일)를 계산<br>
+                1단지의 현재 공정률을 2단지는 과거 언제 달성했었는지 계산하여 공사 시차를 추정<br>
                 
-                <div style="text-align: center; margin: 15px 0; font-size: 1.1em;">
-                    \[ 추정 지연일 = (P_{target} - P_0) \times \frac{\Delta D}{\Delta P} \]
+                <!-- 수식 영역 가로 스크롤 래퍼 추가 -->
+                <div class="scroll-responsive" style="text-align: center; margin: 15px 0; font-size: 1.1em; padding: 10px 0;">
+                    $$추정 지연일 = (P_{target} - P_0) \times \frac{\Delta D}{\Delta P}$$
                 </div>
                 
-                - \(P_{target}\) : 1단지의 현재 공정률<br>
-                - \(P_0\) : 2단지의 직전 달 공정률<br>
-                - \(\Delta D\) : 지난 공지와 이번 공지 사이의 총 일수<br>
-                - \(\Delta P\) : 그 기간 동안 2단지가 상승한 공정률
+                - $P_{target}$ : 1단지의 현재 공정률<br>
+                - $P_0$ : 2단지의 직전 달 공정률<br>
+                - $\Delta D$ : 지난 공지와 이번 공지 사이의 총 일수<br>
+                - $\Delta P$ : 그 기간 동안 2단지가 상승한 공정률
             </span>
             
-            <div class="table-title">월별 공정률 및 추정 지연일 (누적)</div>
-            <div id="history-table-container"></div>
+            <div class="table-title">월별 단지 간 시차 발생 추이</div>
+            
+            <!-- 테이블 영역 가로 스크롤 래퍼 처리 -->
+            <div class="scroll-responsive" id="history-table-container"></div>
         </div>
     </div>
 </div>
@@ -130,7 +162,7 @@
     const diffProg1 = [];
     const diffProg2 = [];
     for (let i = 1; i < reportData.history.length; i++) {
-        incrementLabels.push(`${reportData.history[i-1].label} ~ ${reportData.history[i].label}`);
+        incrementLabels.push(reportData.history[i-1].label + ' ~ ' + reportData.history[i].label);
         diffProg1.push((reportData.history[i].prog1 - reportData.history[i-1].prog1).toFixed(2));
         diffProg2.push((reportData.history[i].prog2 - reportData.history[i-1].prog2).toFixed(2));
     }
@@ -147,7 +179,7 @@
         options: {
             responsive: true, maintainAspectRatio: false,
             plugins: { title: { display: true, text: '전체 공정률 추이 (%)', font: { size: 16 } }, datalabels: { align: 'top', anchor: 'bottom', formatter: v => v + '%', font: { weight: 'bold' } } },
-            scales: { y: { min: Math.floor(Math.min(...dataProg1) - 5) } }
+            scales: { y: { min: Math.floor(Math.min.apply(Math, dataProg1) - 5) } }
         }
     });
 
@@ -163,7 +195,7 @@
         options: {
             responsive: true, maintainAspectRatio: false,
             plugins: { title: { display: true, text: '이전 대비 공정 증가율 (%p)', font: { size: 16 } }, datalabels: { align: 'end', anchor: 'end', formatter: v => '+' + v + '%p', font: { weight: 'bold' } } },
-            scales: { y: { beginAtZero: true, suggestedMax: Math.max(...diffProg1, ...diffProg2) + 2 } }
+            scales: { y: { beginAtZero: true, suggestedMax: Math.max.apply(Math, diffProg1.concat(diffProg2)) + 2 } }
         }
     });
 
