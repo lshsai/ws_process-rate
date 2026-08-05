@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>왕숙 푸르지오 월별 공사 현황</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+    
+    <!-- 수식을 깔끔하게 보여주기 위한 MathJax 스크립트 추가 -->
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
+    <!-- 데이터 파일 불러오기 -->
+    <script src="data.js"></script>
+    <style>
+        body { font-family: 'Malgun Gothic', sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 900px; margin: 0 auto; background: #ffffff; padding: 30px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 15px; }
+        h2 { color: #2980b9; margin-top: 30px; border-left: 4px solid #3498db; padding-left: 10px; }
+        .summary-box { background-color: #e8f4f8; padding: 20px; border-radius: 8px; margin-bottom: 20px; font-weight: bold; }
+        .content-section { display: flex; gap: 20px; }
+        .complex-info { flex: 1; background: #f9f9f9; padding: 20px; border-radius: 8px; border: 1px solid #eee; }
+        ul { padding-left: 20px; line-height: 1.8; }
+        .chart-container { position: relative; height: 400px; width: 100%; margin-top: 30px; }
+        .math-explanation { background-color: #fdfdfd; border: 1px dashed #ccc; padding: 25px; margin-top: 20px; border-radius: 5px; }
+        .highlight { color: #e74c3c; font-weight: bold; font-size: 1.1em; }
+        a { color: #3498db; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        
+        table.history-table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.95em; text-align: center; }
+        table.history-table th { background-color: #f2f2f2; padding: 12px 10px; border: 1px solid #ddd; font-weight: bold; color: #2c3e50; }
+        table.history-table td { padding: 12px 10px; border: 1px solid #ddd; }
+        
+        .table-title { margin-top: 40px; margin-bottom: 5px; color: #2c3e50; font-size: 1.1em; font-weight: bold; border-left: 4px solid #3498db; padding-left: 10px; }
+
+        @media (max-width: 768px) {
+            .content-section { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1 id="main-title">[왕숙 푸르지오 공사 진행 현황(<span id="summary-month1"></span>)]</h1>
+
+    <div class="summary-box">
+        <p>1단지 공정률 : <span id="current-prog1"></span>% <a id="link1" href="#" target="_blank">[상세보기]</a></p>
+        <p>2단지 공정률 : <span id="current-prog2"></span>% <a id="link2" href="#" target="_blank">[상세보기]</a></p>
+        <p style="font-weight: normal; font-size: 0.9em; margin-top: 10px;">
+            공정률 정보 출처: <a href="https://apply.lh.or.kr/lhapply/land/cwsttList.do" target="_blank">LH 청약센터</a>
+        </p>
+    </div>
+
+    <div class="content-section">
+        <div class="complex-info">
+            <h2>1단지 공사 현황</h2>
+            <ul id="complex1-list"></ul>
+        </div>
+        <div class="complex-info">
+            <h2>2단지 공사 현황</h2>
+            <ul id="complex2-list"></ul>
+        </div>
+    </div>
+
+    <div class="graph-section">
+        <h2>월별 공정률 및 증가율</h2>
+        <div class="chart-container"><canvas id="cumulativeChart"></canvas></div>
+        <div class="chart-container"><canvas id="incrementChart"></canvas></div>
+
+        <div class="math-explanation">
+            <span style="font-size: 1.1em; font-weight: bold; color: #2c3e50;">[추정지연일]</span><br><br>
+            - 기준일자: <span id="calc-date"></span><br>
+            - 현재 1단지 공정률: <span id="calc-prog1"></span>%<br>
+            - 2단지의 동일 공정률 달성 추정일: <span id="calc-reach-date"></span><br><br>
+            <span class="highlight">- 약 <span id="calc-delay"></span>일 차이 (1단지 지연)</span><br><br>
+            <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+            <span style="color: #444; font-size: 0.95em; line-height: 1.8;">
+                <span style="color: #2980b9; font-weight: bold; font-size: 1.05em;">계산 방식 (선형 보간법 적용)</span><br>
+                1단지의 현재 공정률을 2단지는 언제 달성했었는지 그 차이(추정지연일)를 계산<br>
+                
+                <div style="text-align: center; margin: 15px 0; font-size: 1.1em;">
+                    \[ 추정 지연일 = (P_{target} - P_0) \times \frac{\Delta D}{\Delta P} \]
+                </div>
+                
+                - \(P_{target}\) : 1단지의 현재 공정률<br>
+                - \(P_0\) : 2단지의 직전 달 공정률<br>
+                - \(\Delta D\) : 지난 공지와 이번 공지 사이의 총 일수<br>
+                - \(\Delta P\) : 그 기간 동안 2단지가 상승한 공정률
+            </span>
+            
+            <div class="table-title">월별 공정률 및 추정 지연일 (누적)</div>
+            <div id="history-table-container"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const latestData = reportData.history[reportData.history.length - 1];
+    const latestMonthStr = parseInt(latestData.date.split('-')[1], 10) + '월';
+
+    document.getElementById('summary-month1').textContent = latestMonthStr;
+    document.getElementById('current-prog1').textContent = latestData.prog1;
+    document.getElementById('link1').href = reportData.complex1.link;
+    
+    document.getElementById('current-prog2').textContent = latestData.prog2;
+    document.getElementById('link2').href = reportData.complex2.link;
+
+    const list1 = document.getElementById('complex1-list');
+    reportData.complex1.details.forEach(text => {
+        const li = document.createElement('li');
+        li.textContent = text;
+        list1.appendChild(li);
+    });
+
+    const list2 = document.getElementById('complex2-list');
+    reportData.complex2.details.forEach(text => {
+        const li = document.createElement('li');
+        li.textContent = text;
+        list2.appendChild(li);
+    });
+
+    Chart.register(ChartDataLabels);
+    Chart.defaults.font.family = "'Malgun Gothic', sans-serif";
+
+    const labels = reportData.history.map(d => d.label);
+    const dataProg1 = reportData.history.map(d => d.prog1);
+    const dataProg2 = reportData.history.map(d => d.prog2);
+
+    const incrementLabels = [];
+    const diffProg1 = [];
+    const diffProg2 = [];
+    for (let i = 1; i < reportData.history.length; i++) {
+        incrementLabels.push(`${reportData.history[i-1].label} ~ ${reportData.history[i].label}`);
+        diffProg1.push((reportData.history[i].prog1 - reportData.history[i-1].prog1).toFixed(2));
+        diffProg2.push((reportData.history[i].prog2 - reportData.history[i-1].prog2).toFixed(2));
+    }
+
+    new Chart(document.getElementById('cumulativeChart').getContext('2d'), {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                { label: '1단지', data: dataProg1, borderColor: 'blue', backgroundColor: 'blue', borderWidth: 2, tension: 0.1, pointRadius: 5 },
+                { label: '2단지', data: dataProg2, borderColor: 'orange', backgroundColor: 'orange', borderWidth: 2, tension: 0.1, pointRadius: 5 }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { title: { display: true, text: '전체 공정률 추이 (%)', font: { size: 16 } }, datalabels: { align: 'top', anchor: 'bottom', formatter: v => v + '%', font: { weight: 'bold' } } },
+            scales: { y: { min: Math.floor(Math.min(...dataProg1) - 5) } }
+        }
+    });
+
+    new Chart(document.getElementById('incrementChart').getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: incrementLabels,
+            datasets: [
+                { label: '1단지', data: diffProg1, backgroundColor: 'rgba(0, 0, 255, 0.7)' },
+                { label: '2단지', data: diffProg2, backgroundColor: 'rgba(255, 165, 0, 0.7)' }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { title: { display: true, text: '이전 대비 공정 증가율 (%p)', font: { size: 16 } }, datalabels: { align: 'end', anchor: 'end', formatter: v => '+' + v + '%p', font: { weight: 'bold' } } },
+            scales: { y: { beginAtZero: true, suggestedMax: Math.max(...diffProg1, ...diffProg2) + 2 } }
+        }
+    });
+
+    if (reportData.history.length >= 2) {
+        const historyData = reportData.history;
+        const targetProg = latestData.prog1;
+        const targetDate = new Date(latestData.date);
+        
+        let idx = -1;
+        for (let i = 0; i < historyData.length - 1; i++) {
+            if (historyData[i].prog2 <= targetProg && targetProg <= historyData[i+1].prog2) { idx = i; break; }
+        }
+        if (idx === -1) idx = targetProg < historyData[0].prog2 ? 0 : historyData.length - 2;
+
+        const startRec = historyData[idx];
+        const endRec = historyData[idx+1];
+        const startDate = new Date(startRec.date);
+        const endDate = new Date(endRec.date);
+        const msPerDay = 86400000;
+        
+        const progDiff = endRec.prog2 - startRec.prog2;
+        if (progDiff !== 0) {
+            const dailyRate = progDiff / ((endDate - startDate) / msPerDay);
+            const c2ReachedTime = startDate.getTime() + (((targetProg - startRec.prog2) / dailyRate) * msPerDay);
+            
+            document.getElementById('calc-date').textContent = latestData.date;
+            document.getElementById('calc-prog1').textContent = targetProg;
+            document.getElementById('calc-reach-date').textContent = new Date(c2ReachedTime).toISOString().split('T')[0];
+            document.getElementById('calc-delay').textContent = ((targetDate.getTime() - c2ReachedTime) / msPerDay).toFixed(1);
+        }
+    }
+
+    const tableContainer = document.getElementById('history-table-container');
+    let tableHTML = '<table class="history-table">';
+    tableHTML += '<tr><th>기준일자</th><th>1단지(%)</th><th>2단지(%)</th><th>격차(%p)</th><th>추정 지연(일)</th></tr>';
+
+    for (let i = 0; i < reportData.history.length; i++) {
+        const row = reportData.history[i];
+        const gap = (row.prog2 - row.prog1).toFixed(2);
+        let delayText = '-';
+
+        if (i >= 1) {
+            const targetProg = row.prog1;
+            const targetDate = new Date(row.date);
+            let idx = -1;
+
+            for (let j = 0; j < i; j++) {
+                if (reportData.history[j].prog2 <= targetProg && targetProg <= reportData.history[j+1].prog2) {
+                    idx = j;
+                    break;
+                }
+            }
+
+            if (idx === -1) {
+                idx = targetProg < reportData.history[0].prog2 ? 0 : i - 1;
+            }
+
+            const startRec = reportData.history[idx];
+            const endRec = reportData.history[idx+1];
+            const startDate = new Date(startRec.date);
+            const endDate = new Date(endRec.date);
+            const msPerDay = 86400000;
+
+            const progDiff = endRec.prog2 - startRec.prog2;
+            if (progDiff !== 0) {
+                const dailyRate = progDiff / ((endDate - startDate) / msPerDay);
+                const c2ReachedTime = startDate.getTime() + (((targetProg - startRec.prog2) / dailyRate) * msPerDay);
+                const delayDays = ((targetDate.getTime() - c2ReachedTime) / msPerDay).toFixed(1);
+                delayText = delayDays + '일';
+            }
+        }
+
+        tableHTML += '<tr>';
+        tableHTML += '<td>' + row.date + '</td>';
+        tableHTML += '<td>' + row.prog1 + '</td>';
+        tableHTML += '<td>' + row.prog2 + '</td>';
+        tableHTML += '<td>' + gap + '</td>';
+        tableHTML += '<td style="color: #e74c3c; font-weight: bold;">' + delayText + '</td>';
+        tableHTML += '</tr>';
+    }
+    tableHTML += '</table>';
+    tableContainer.innerHTML = tableHTML;
+
+</script>
+</body>
+</html>
