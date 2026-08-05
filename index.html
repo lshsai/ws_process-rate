@@ -8,7 +8,6 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
     
-    <!-- MathJax 설정 및 스크립트 추가 -->
     <script>
       MathJax = {
         tex: {
@@ -19,7 +18,6 @@
     </script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     
-    <!-- 데이터 파일 불러오기 -->
     <script src="data.js"></script>
     
     <style>
@@ -32,19 +30,19 @@
         .complex-info { flex: 1; background: #f9f9f9; padding: 20px; border-radius: 8px; border: 1px solid #eee; }
         ul { padding-left: 20px; line-height: 1.8; }
         
-        /* 모바일 대응: 그래프 스크롤 영역 */
         .chart-scroll-wrapper { width: 100%; overflow-x: auto; overflow-y: hidden; margin-top: 30px; -webkit-overflow-scrolling: touch; }
-        .chart-inner { min-width: 700px; height: 400px; position: relative; }
+        /* min-width를 제거하고 JS와 CSS max() 함수로 유연하게 제어합니다 */
+        .chart-inner { height: 400px; position: relative; width: 100%; } 
         
         .math-explanation { background-color: #fdfdfd; border: 1px dashed #ccc; padding: 25px; margin-top: 20px; border-radius: 5px; }
         .highlight { color: #e74c3c; font-weight: bold; font-size: 1.1em; }
         a { color: #3498db; text-decoration: none; }
         a:hover { text-decoration: underline; }
         
-        /* 모바일 대응: 테이블 및 수식 스크롤 영역 */
         .scroll-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
         
-        table.history-table { width: 100%; min-width: 600px; border-collapse: collapse; margin-top: 15px; font-size: 0.95em; text-align: center; }
+        /* min-width를 제거하고 white-space: nowrap을 추가하여 글자 넘침 방지 */
+        table.history-table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.95em; text-align: center; white-space: nowrap; }
         table.history-table th { background-color: #f2f2f2; padding: 12px 10px; border: 1px solid #ddd; font-weight: bold; color: #2c3e50; }
         table.history-table td { padding: 12px 10px; border: 1px solid #ddd; }
         table.history-table tr:nth-child(even) { background-color: #f9f9f9; }
@@ -83,15 +81,14 @@
     <div class="graph-section">
         <h2>월별 공정률 및 증가율</h2>
         
-        <!-- 그래프 영역 가로 스크롤 래퍼 추가 -->
         <div class="chart-scroll-wrapper">
-            <div class="chart-inner">
+            <div class="chart-inner" id="cumulativeChartContainer">
                 <canvas id="cumulativeChart"></canvas>
             </div>
         </div>
         
         <div class="chart-scroll-wrapper">
-            <div class="chart-inner">
+            <div class="chart-inner" id="incrementChartContainer">
                 <canvas id="incrementChart"></canvas>
             </div>
         </div>
@@ -107,7 +104,6 @@
                 <span style="color: #2980b9; font-weight: bold; font-size: 1.05em;">계산 방식 (선형 보간법 적용)</span><br>
                 1단지의 현재 공정률을 2단지는 과거 언제 달성했었는지 계산하여 공사 시차를 추정<br>
                 
-                <!-- 수식 영역 가로 스크롤 래퍼 추가 -->
                 <div class="scroll-responsive" style="text-align: center; margin: 15px 0; font-size: 1.1em; padding: 10px 0;">
                     $$추정 지연일 = (P_{target} - P_0) \times \frac{\Delta D}{\Delta P}$$
                 </div>
@@ -119,8 +115,6 @@
             </span>
             
             <div class="table-title">월별 단지 간 시차 발생 추이</div>
-            
-            <!-- 테이블 영역 가로 스크롤 래퍼 처리 -->
             <div class="scroll-responsive" id="history-table-container"></div>
         </div>
     </div>
@@ -150,6 +144,14 @@
         li.textContent = text;
         list2.appendChild(li);
     });
+
+    // 데이터 개수에 따른 차트 동적 너비 계산 로직 추가
+    // 데이터 1개당 약 70px의 공간을 확보하고, 화면 100%와 비교하여 더 큰 값을 적용합니다.
+    const dataCount = reportData.history.length;
+    const requiredMinWidth = dataCount * 70;
+    
+    document.getElementById('cumulativeChartContainer').style.minWidth = `max(100%, ${requiredMinWidth}px)`;
+    document.getElementById('incrementChartContainer').style.minWidth = `max(100%, ${requiredMinWidth}px)`;
 
     Chart.register(ChartDataLabels);
     Chart.defaults.font.family = "'Malgun Gothic', sans-serif";
