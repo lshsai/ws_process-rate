@@ -31,17 +31,16 @@
         ul { padding-left: 20px; line-height: 1.8; }
         
         .chart-scroll-wrapper { width: 100%; overflow-x: auto; overflow-y: hidden; margin-top: 30px; -webkit-overflow-scrolling: touch; }
-        /* min-width를 제거하고 JS와 CSS max() 함수로 유연하게 제어합니다 */
         .chart-inner { height: 400px; position: relative; width: 100%; } 
         
         .math-explanation { background-color: #fdfdfd; border: 1px dashed #ccc; padding: 25px; margin-top: 20px; border-radius: 5px; }
         .highlight { color: #e74c3c; font-weight: bold; font-size: 1.1em; }
+        .highlight-blue { color: #2980b9; font-weight: bold; font-size: 1.1em; }
         a { color: #3498db; text-decoration: none; }
         a:hover { text-decoration: underline; }
         
         .scroll-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
         
-        /* min-width를 제거하고 white-space: nowrap을 추가하여 글자 넘침 방지 */
         table.history-table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.95em; text-align: center; white-space: nowrap; }
         table.history-table th { background-color: #f2f2f2; padding: 12px 10px; border: 1px solid #ddd; font-weight: bold; color: #2c3e50; }
         table.history-table td { padding: 12px 10px; border: 1px solid #ddd; }
@@ -96,13 +95,13 @@
         <div class="math-explanation">
             <span style="font-size: 1.1em; font-weight: bold; color: #2c3e50;">[공사진행 추정지연일]</span><br><br>
             - 기준일자: <span id="calc-date"></span><br>
-            - 현재 1단지 공정률: <span id="calc-prog1"></span>%<br>
-            - 2단지의 동일 공정률 달성 추정일: <span id="calc-reach-date"></span><br><br>
-            <span class="highlight">- 두 단지 간의 공정 시차: 약 <span id="calc-delay"></span>일 차이 (1단지 지연)</span><br><br>
+            - 1단지 현재 공정률: <span id="calc-prog1"></span>%<br>
+            - 2단지의 과거 동일 공정률 달성 추정일: <span id="calc-reach-date"></span><br><br>
+            <span class="highlight">- 단지 간 공정 시차: 약 <span id="calc-delay"></span>일 차이 (1단지 지연)</span><br><br>
             <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
             <span style="color: #444; font-size: 0.95em; line-height: 1.8;">
                 <span style="color: #2980b9; font-weight: bold; font-size: 1.05em;">계산 방식 (선형 보간법 적용)</span><br>
-                1단지의 현재 공정률을 2단지는 과거 언제 달성했었는지 계산하여 공사 시차를 추정<br>
+                1단지의 현재 공정률을 2단지는 언제 달성했었는지 계산하여 공사 시차를 추정<br>
                 
                 <div class="scroll-responsive" style="text-align: center; margin: 15px 0; font-size: 1.1em; padding: 10px 0;">
                     $$추정 지연일 = (P_{target} - P_0) \times \frac{\Delta D}{\Delta P}$$
@@ -114,9 +113,47 @@
                 - $\Delta P$ : 그 기간 동안 2단지가 상승한 공정률
             </span>
             
-            <div class="table-title">월별 단지 간 시차 발생 추이</div>
+            <div class="table-title">전체 누적 공정률 및 추정 지연일</div>
             <div class="scroll-responsive" id="history-table-container"></div>
         </div>
+        
+        <div class="math-explanation" style="margin-top: 30px;">
+            <div style="background-color: #f0f7fb; border: 2px solid #3498db; border-radius: 8px; padding: 25px; margin: 15px 0 25px 0; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                <span style="font-size: 1.1em; font-weight: bold; color: #2c3e50;">[공정률 100% 달성 추정일]</span><br><br>
+                - 입주 예정일(A) : 1단지 (2028.5.31.), 2단지 (2028.6.30.)<br>
+                - 공정률 100% 달성 추정일(B) : 1단지 (<span id="pred-reach-date1" style="color: #2980b9; font-weight: bold;"></span>), 2단지 (<span id="pred-reach-date2" style="color: #2980b9; font-weight: bold;"></span>)<br>
+                - 입주 전 여유 기간(A-B) : 1단지 (<span id="pred-buffer1" style="color: #2980b9; font-weight: bold;"></span>), 2단지 (<span id="pred-buffer2" style="color: #2980b9; font-weight: bold;"></span>)<br>
+                - 2단지 공정률 100% 시점의 1단지 예상 공정률 : <span id="pred-prog1-at-A" style="font-weight: bold;"></span>% <span style="font-size: 0.95em; color: #e74c3c;">(추정 지연(일) : <span id="pred-delay-at-A" style="font-weight: bold;"></span>)</span><br><br>
+                
+            </div>
+            
+            <span style="color: #444; font-size: 0.95em; line-height: 1.8;">
+                <span style="color: #2980b9; font-weight: bold; font-size: 1.05em;">계산 방식 (계절 가중치 적용)</span><br>
+                과거 실적을 분석하여 순수 공사 속도를 도출한 뒤, <br> 미래의 계절별 제약 조건(장마, 동절기 등)을 가중치로 적용하여 완공 시점을 추정합니다. <br>
+                추후 실제 데이터가 공시되면 해당 기간의 예측값은 실제값으로 자동 대체되어 예측 정밀도가 상승합니다.<br>
+                
+                <div class="scroll-responsive" style="text-align: center; margin: 15px 0; font-size: 1.1em; padding: 10px 0;">
+                    $$P_{future} = P_{now} + \sum (R_{base} \times W_{m})$$
+                </div>
+                
+                - $P_{future}$ : 미래 특정 시점의 예상 공정률<br>
+                - $P_{now}$ : 현재까지 확인된 최신 공정률<br>
+                - $R_{base}$ : 날씨 제약이 없는 기준 1일 공정 증가율<br>
+                - $W_{m}$ : 월별 기후 가중치<br>
+                &nbsp;&nbsp;· 0.9 적용 : 6월(중순 이후 장마 시작)<br>
+                &nbsp;&nbsp;· 0.8 적용 : 7, 8월 (장마)<br>
+                &nbsp;&nbsp;· 0.7 적용 : 12, 1, 2월 (동절기)<br>
+                - 추정 그래프 기준일 : 매달 1일
+            </span>
+        </div>
+
+        <div class="table-title" style="margin-top: 40px;">공정률 실적 및 예상 추이 그래프<span style="font-size: 0.8em; color: #777; font-weight: normal;">(추정 그래프 기준일: 매달 1일)</span></div>
+        <div class="chart-scroll-wrapper">
+            <div class="chart-inner" id="monthlyPredictionChartContainer">
+                <canvas id="monthlyPredictionChart"></canvas>
+            </div>
+        </div>
+
     </div>
 </div>
 
@@ -145,20 +182,123 @@
         list2.appendChild(li);
     });
 
-    // 데이터 개수에 따른 차트 동적 너비 계산 로직 추가
-    // 데이터 1개당 약 70px의 공간을 확보하고, 화면 100%와 비교하여 더 큰 값을 적용합니다.
-    const dataCount = reportData.history.length;
-    const requiredMinWidth = dataCount * 70;
-    
-    document.getElementById('cumulativeChartContainer').style.minWidth = `max(100%, ${requiredMinWidth}px)`;
-    document.getElementById('incrementChartContainer').style.minWidth = `max(100%, ${requiredMinWidth}px)`;
-
-    Chart.register(ChartDataLabels);
-    Chart.defaults.font.family = "'Malgun Gothic', sans-serif";
-
     const labels = reportData.history.map(d => d.label);
     const dataProg1 = reportData.history.map(d => d.prog1);
     const dataProg2 = reportData.history.map(d => d.prog2);
+
+    // --- 기후 가중치 기반 100% 및 월별 시뮬레이션 예측 로직 ---
+    const msPerDay = 86400000;
+    const monthlyWeights = {
+        1: 0.7, 2: 0.7, 3: 1.0, 4: 1.0, 5: 1.0, 6: 0.9, 
+        7: 0.8, 8: 0.8, 9: 1.0, 10: 1.0, 11: 1.0, 12: 0.7
+    };
+
+    const startDate = new Date(reportData.history[0].date);
+    const endDate = new Date(latestData.date);
+    
+    let pastEffectiveDays = 0;
+    let tempDate = new Date(startDate.getTime());
+    while (tempDate < endDate) {
+        tempDate.setDate(tempDate.getDate() + 1);
+        pastEffectiveDays += monthlyWeights[tempDate.getMonth() + 1];
+    }
+
+    const baseRate1 = (latestData.prog1 - reportData.history[0].prog1) / pastEffectiveDays;
+    const baseRate2 = (latestData.prog2 - reportData.history[0].prog2) / pastEffectiveDays;
+
+    let simDate = new Date(endDate.getTime());
+    let simProg1 = latestData.prog1;
+    let simProg2 = latestData.prog2;
+    let safetyCounter = 0; 
+
+    let date100_1_str = '';
+    let date100_2_str = '';
+    let prog1_at_A = 0;
+
+    const futureLabels = [];
+    const futureData1 = [];
+    const futureData2 = [];
+    let lastMonth = simDate.getMonth();
+
+    while ((simProg1 < 100 || simProg2 < 100) && safetyCounter < 3000) {
+        simDate.setDate(simDate.getDate() + 1);
+        const w = monthlyWeights[simDate.getMonth() + 1];
+        
+        if (simProg1 < 100) simProg1 += baseRate1 * w;
+        if (simProg2 < 100) simProg2 += baseRate2 * w;
+        
+        if (simProg2 >= 100 && date100_2_str === '') {
+            date100_2_str = simDate.toISOString().split('T')[0].replace(/-/g, '.');
+            prog1_at_A = simProg1;
+        }
+        
+        if (simProg1 >= 100 && date100_1_str === '') {
+            date100_1_str = simDate.toISOString().split('T')[0].replace(/-/g, '.');
+        }
+
+        if (simDate.getMonth() !== lastMonth || (simProg1 >= 100 && simProg2 >= 100)) {
+            const yy = simDate.getFullYear().toString().substring(2);
+            const mm = (simDate.getMonth() + 1).toString().padStart(2, '0');
+            const labelStr = yy + '-' + mm;
+            
+            if (futureLabels.length === 0 || futureLabels[futureLabels.length-1] !== labelStr) {
+                futureLabels.push(labelStr);
+                futureData1.push(Math.min(100, parseFloat(simProg1.toFixed(2))));
+                futureData2.push(Math.min(100, parseFloat(simProg2.toFixed(2))));
+            }
+            lastMonth = simDate.getMonth();
+            if (simProg1 >= 100 && simProg2 >= 100) break;
+        }
+        safetyCounter++;
+    }
+
+    document.getElementById('pred-reach-date1').textContent = date100_1_str;
+    document.getElementById('pred-reach-date2').textContent = date100_2_str;
+    document.getElementById('pred-prog1-at-A').textContent = prog1_at_A.toFixed(1);
+
+    // 내부 보완 확보 기간(여유 일수 및 월 변환) 계산 로직 추가
+    const moveInDate1 = new Date('2028-05-31');
+    const moveInDate2 = new Date('2028-06-30');
+    
+    const reachDate1 = new Date(date100_1_str.replace(/\./g, '-'));
+    const reachDate2 = new Date(date100_2_str.replace(/\./g, '-'));
+    
+    const bufferDays1 = Math.floor((moveInDate1.getTime() - reachDate1.getTime()) / msPerDay);
+    const bufferDays2 = Math.floor((moveInDate2.getTime() - reachDate2.getTime()) / msPerDay);
+
+    const formatBuffer = (days) => {
+        if (days >= 0) return `약 ${days}일(약 ${(days/30).toFixed(1)}개월)`;
+        return `지연 약 ${Math.abs(days)}일(약 ${(Math.abs(days)/30).toFixed(1)}개월)`;
+    };
+
+    const bufferEl1 = document.getElementById('pred-buffer1');
+    bufferEl1.textContent = formatBuffer(bufferDays1);
+    if (bufferDays1 < 0) bufferEl1.style.color = '#e74c3c';
+
+    const bufferEl2 = document.getElementById('pred-buffer2');
+    bufferEl2.textContent = formatBuffer(bufferDays2);
+    if (bufferDays2 < 0) bufferEl2.style.color = '#e74c3c';
+
+    // A시점 기준 1단지 지연일 산출
+    const delayDaysAtA = Math.floor((reachDate1.getTime() - reachDate2.getTime()) / msPerDay);
+    const delayMonthsAtA = (delayDaysAtA / 30).toFixed(1);
+    document.getElementById('pred-delay-at-A').textContent = '약 ' + delayDaysAtA + '일(약 ' + delayMonthsAtA + '개월)';
+
+
+    // --- 상단 차트 세팅 ---
+    Chart.register(ChartDataLabels);
+    Chart.defaults.font.family = "'Malgun Gothic', sans-serif";
+
+    const topChartExtendedLabels = [...labels, date100_2_str.substring(2).replace(/\./g, '-')];
+    const lastIndex = dataProg1.length - 1;
+    
+    const topChartPredProg1 = new Array(topChartExtendedLabels.length).fill(null);
+    topChartPredProg1[lastIndex] = dataProg1[lastIndex]; 
+    topChartPredProg1[lastIndex + 1] = parseFloat(prog1_at_A.toFixed(2));
+
+    const topChartPredProg2 = new Array(topChartExtendedLabels.length).fill(null);
+    topChartPredProg2[lastIndex] = dataProg2[lastIndex]; 
+    topChartPredProg2[lastIndex + 1] = 100;
 
     const incrementLabels = [];
     const diffProg1 = [];
@@ -169,18 +309,30 @@
         diffProg2.push((reportData.history[i].prog2 - reportData.history[i-1].prog2).toFixed(2));
     }
 
+    const requiredMinWidthTop = (reportData.history.length + 1) * 70;
+    document.getElementById('cumulativeChartContainer').style.minWidth = `max(100%, ${requiredMinWidthTop}px)`;
+    document.getElementById('incrementChartContainer').style.minWidth = `max(100%, ${reportData.history.length * 70}px)`;
+
     new Chart(document.getElementById('cumulativeChart').getContext('2d'), {
         type: 'line',
         data: {
-            labels: labels,
+            labels: topChartExtendedLabels,
             datasets: [
-                { label: '1단지', data: dataProg1, borderColor: 'blue', backgroundColor: 'blue', borderWidth: 2, tension: 0.1, pointRadius: 5 },
-                { label: '2단지', data: dataProg2, borderColor: 'orange', backgroundColor: 'orange', borderWidth: 2, tension: 0.1, pointRadius: 5 }
+                { label: '1단지(실적)', data: dataProg1, borderColor: 'blue', backgroundColor: 'blue', borderWidth: 2, tension: 0.1, pointRadius: 5 },
+                { label: '2단지(실적)', data: dataProg2, borderColor: 'orange', backgroundColor: 'orange', borderWidth: 2, tension: 0.1, pointRadius: 5 },
+                { label: '1단지(최종예상)', data: topChartPredProg1, borderColor: 'blue', backgroundColor: 'transparent', borderWidth: 2, borderDash: [5, 5], tension: 0, pointRadius: 5 },
+                { label: '2단지(최종예상)', data: topChartPredProg2, borderColor: 'orange', backgroundColor: 'transparent', borderWidth: 2, borderDash: [5, 5], tension: 0, pointRadius: 5 }
             ]
         },
         options: {
             responsive: true, maintainAspectRatio: false,
-            plugins: { title: { display: true, text: '전체 공정률 추이 (%)', font: { size: 16 } }, datalabels: { align: 'top', anchor: 'bottom', formatter: v => v + '%', font: { weight: 'bold' } } },
+            plugins: { 
+                title: { display: true, text: '전체 공정률 실적 및 예상 추이 (%)', font: { size: 16 } }, 
+                datalabels: { 
+                    align: 'top', anchor: 'bottom', formatter: v => v + '%', font: { weight: 'bold' },
+                    display: function(context) { return context.raw !== null; }
+                } 
+            },
             scales: { y: { min: Math.floor(Math.min.apply(Math, dataProg1) - 5) } }
         }
     });
@@ -196,11 +348,12 @@
         },
         options: {
             responsive: true, maintainAspectRatio: false,
-            plugins: { title: { display: true, text: '이전 대비 공정 증가율 (%p)', font: { size: 16 } }, datalabels: { align: 'end', anchor: 'end', formatter: v => '+' + v + '%p', font: { weight: 'bold' } } },
+            plugins: { title: { display: true, text: '전달 대비 공정 증가율 (%p)', font: { size: 16 } }, datalabels: { align: 'end', anchor: 'end', formatter: v => '+' + v + '%p', font: { weight: 'bold' } } },
             scales: { y: { beginAtZero: true, suggestedMax: Math.max.apply(Math, diffProg1.concat(diffProg2)) + 2 } }
         }
     });
 
+    // --- 지연일 테이블 세팅 ---
     if (reportData.history.length >= 2) {
         const historyData = reportData.history;
         const targetProg = latestData.prog1;
@@ -214,14 +367,13 @@
 
         const startRec = historyData[idx];
         const endRec = historyData[idx+1];
-        const startDate = new Date(startRec.date);
-        const endDate = new Date(endRec.date);
-        const msPerDay = 86400000;
+        const startDate_history = new Date(startRec.date);
+        const endDate_history = new Date(endRec.date);
         
         const progDiff = endRec.prog2 - startRec.prog2;
         if (progDiff !== 0) {
-            const dailyRate = progDiff / ((endDate - startDate) / msPerDay);
-            const c2ReachedTime = startDate.getTime() + (((targetProg - startRec.prog2) / dailyRate) * msPerDay);
+            const dailyRate = progDiff / ((endDate_history - startDate_history) / msPerDay);
+            const c2ReachedTime = startDate_history.getTime() + (((targetProg - startRec.prog2) / dailyRate) * msPerDay);
             
             document.getElementById('calc-date').textContent = latestData.date;
             document.getElementById('calc-prog1').textContent = targetProg;
@@ -257,14 +409,13 @@
 
             const startRec = reportData.history[idx];
             const endRec = reportData.history[idx+1];
-            const startDate = new Date(startRec.date);
-            const endDate = new Date(endRec.date);
-            const msPerDay = 86400000;
+            const startDate_history = new Date(startRec.date);
+            const endDate_history = new Date(endRec.date);
 
             const progDiff = endRec.prog2 - startRec.prog2;
             if (progDiff !== 0) {
-                const dailyRate = progDiff / ((endDate - startDate) / msPerDay);
-                const c2ReachedTime = startDate.getTime() + (((targetProg - startRec.prog2) / dailyRate) * msPerDay);
+                const dailyRate = progDiff / ((endDate_history - startDate_history) / msPerDay);
+                const c2ReachedTime = startDate_history.getTime() + (((targetProg - startRec.prog2) / dailyRate) * msPerDay);
                 const delayDays = ((targetDate.getTime() - c2ReachedTime) / msPerDay).toFixed(1);
                 delayText = delayDays + '일';
             }
@@ -281,6 +432,45 @@
     tableHTML += '</table>';
     tableContainer.innerHTML = tableHTML;
 
+    // --- 하단 월별 시뮬레이션 차트 세팅 ---
+    const combinedLabels = [...labels, ...futureLabels];
+    
+    const combinedActual1 = [...dataProg1, ...new Array(futureLabels.length).fill(null)];
+    const combinedActual2 = [...dataProg2, ...new Array(futureLabels.length).fill(null)];
+    
+    const combinedPred1 = [...new Array(lastIndex).fill(null), dataProg1[lastIndex], ...futureData1];
+    const combinedPred2 = [...new Array(lastIndex).fill(null), dataProg2[lastIndex], ...futureData2];
+
+    const reqPredWidth = combinedLabels.length * 70;
+    document.getElementById('monthlyPredictionChartContainer').style.minWidth = `max(100%, ${reqPredWidth}px)`;
+
+    new Chart(document.getElementById('monthlyPredictionChart').getContext('2d'), {
+        type: 'line',
+        data: {
+            labels: combinedLabels,
+            datasets: [
+                { label: '1단지(실적)', data: combinedActual1, borderColor: 'blue', backgroundColor: 'blue', borderWidth: 2, tension: 0.1, pointRadius: 5 },
+                { label: '2단지(실적)', data: combinedActual2, borderColor: 'orange', backgroundColor: 'orange', borderWidth: 2, tension: 0.1, pointRadius: 5 },
+                { label: '1단지(추정)', data: combinedPred1, borderColor: 'rgba(0, 0, 255, 0.4)', backgroundColor: 'transparent', borderWidth: 2, borderDash: [5, 5], tension: 0.1, pointRadius: 4 },
+                { label: '2단지(추정)', data: combinedPred2, borderColor: 'rgba(255, 165, 0, 0.4)', backgroundColor: 'transparent', borderWidth: 2, borderDash: [5, 5], tension: 0.1, pointRadius: 4 }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { 
+                title: { display: false }, 
+                tooltip: { enabled: true },
+                datalabels: { 
+                    align: 'top', anchor: 'bottom', formatter: v => v + '%', font: { weight: 'bold', size: 10 },
+                    display: function(context) { 
+                        if (context.datasetIndex >= 2) return false;
+                        return context.raw !== null; 
+                    }
+                } 
+            },
+            scales: { y: { min: Math.floor(Math.min.apply(Math, dataProg1) - 5) } }
+        }
+    });
 </script>
 </body>
 </html>
