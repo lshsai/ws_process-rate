@@ -124,7 +124,6 @@
                 - 공정률 100% 달성 추정일(B) : 1단지 (<span id="pred-reach-date1" style="color: #2980b9; font-weight: bold;"></span>), 2단지 (<span id="pred-reach-date2" style="color: #2980b9; font-weight: bold;"></span>)<br>
                 - 입주 전 여유 기간(A-B) : 1단지 (<span id="pred-buffer1" style="color: #2980b9; font-weight: bold;"></span>), 2단지 (<span id="pred-buffer2" style="color: #2980b9; font-weight: bold;"></span>)<br>
                 - 2단지 공정률 100% 시점의 1단지 예상 공정률 : <span id="pred-prog1-at-A" style="font-weight: bold;"></span>% <span style="font-size: 0.95em; color: #e74c3c;">(추정 지연(일) : <span id="pred-delay-at-A" style="font-weight: bold;"></span>)</span><br><br>
-                
             </div>
             
             <span style="color: #444; font-size: 0.95em; line-height: 1.8;">
@@ -168,19 +167,33 @@
     document.getElementById('current-prog2').textContent = latestData.prog2;
     document.getElementById('link2').href = reportData.complex2.link;
 
-    const list1 = document.getElementById('complex1-list');
-    reportData.complex1.details.forEach(text => {
-        const li = document.createElement('li');
-        li.textContent = text;
-        list1.appendChild(li);
-    });
+    // --- 공사 세부 현황 파싱 및 렌더링 로직 ---
+    function renderDetails(detailsData, containerId) {
+        const listEl = document.getElementById(containerId);
+        if (!listEl || !detailsData) return;
+        listEl.innerHTML = '';
+        
+        // 배열이든 단일 문자열이든 모두 하나의 텍스트로 병합
+        const fullText = Array.isArray(detailsData) ? detailsData.join('\n') : String(detailsData);
+        
+        // 줄바꿈, 가운데점(·, ㆍ), 하이픈 등으로 분리
+        const rawList = fullText.split(/[\n\r]+|[·ㆍ•]|\s-\s|^-\s*/);
+        
+        // 앞뒤 특수기호(-, ㆍ, ·, •, 공백 등) 깔끔하게 제거 후 출력
+        const items = rawList
+            .map(item => item.replace(/^[\s·ㆍ\-\–\—\•\*\#]+/, '').trim())
+            .filter(item => item.length > 0);
+        
+        items.forEach(text => {
+            const li = document.createElement('li');
+            li.textContent = text;
+            listEl.appendChild(li);
+        });
+    }
 
-    const list2 = document.getElementById('complex2-list');
-    reportData.complex2.details.forEach(text => {
-        const li = document.createElement('li');
-        li.textContent = text;
-        list2.appendChild(li);
-    });
+
+    renderDetails(reportData.complex1.details, 'complex1-list');
+    renderDetails(reportData.complex2.details, 'complex2-list');
 
     const labels = reportData.history.map(d => d.label);
     const dataProg1 = reportData.history.map(d => d.prog1);
@@ -256,7 +269,7 @@
     document.getElementById('pred-reach-date2').textContent = date100_2_str;
     document.getElementById('pred-prog1-at-A').textContent = prog1_at_A.toFixed(1);
 
-    // 내부 보완 확보 기간(여유 일수 및 월 변환) 계산 로직 추가
+    // 내부 보완 확보 기간(여유 일수 및 월 변환) 계산 로직
     const moveInDate1 = new Date('2028-05-31');
     const moveInDate2 = new Date('2028-06-30');
     
@@ -283,7 +296,6 @@
     const delayDaysAtA = Math.floor((reachDate1.getTime() - reachDate2.getTime()) / msPerDay);
     const delayMonthsAtA = (delayDaysAtA / 30).toFixed(1);
     document.getElementById('pred-delay-at-A').textContent = '약 ' + delayDaysAtA + '일(약 ' + delayMonthsAtA + '개월)';
-
 
     // --- 상단 차트 세팅 ---
     Chart.register(ChartDataLabels);
