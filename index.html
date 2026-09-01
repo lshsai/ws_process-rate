@@ -93,15 +93,19 @@
         </div>
 
         <div class="math-explanation">
-            <span style="font-size: 1.1em; font-weight: bold; color: #2c3e50;">[공사진행 추정지연일]</span><br><br>
-            - 기준일자: <span id="calc-date"></span><br>
-            - 1단지 현재 공정률: <span id="calc-prog1"></span>%<br>
-            - 2단지의 과거 동일 공정률 달성 추정일: <span id="calc-reach-date"></span><br><br>
-            <span class="highlight">- 단지 간 공정 시차: 약 <span id="calc-delay"></span>일 차이 (1단지 지연)</span><br><br>
+            <div style="background-color: #f0f7fb; border: 2px solid #3498db; border-radius: 8px; padding: 25px; margin: 15px 0 25px 0; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                <span style="font-size: 1.1em; font-weight: bold; color: #2c3e50;">[단지 간 공정 시차(일수)]</span><br><br>
+                - 기준일자: <span id="calc-date"></span><br>
+                - 1단지 현재 공정률: <span id="calc-prog1"></span>%<br>
+                - 2단지의 과거 동일 공정률 달성 추정일: <span id="calc-reach-date"></span><br><br>
+                <span class="highlight">- 단지 간 공정 시차: 약 <span id="calc-delay"></span>일 차이 (1단지 지연)</span><br><br>
+            </div>
+
+
             <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
             <span style="color: #444; font-size: 0.95em; line-height: 1.8;">
                 <span style="color: #2980b9; font-weight: bold; font-size: 1.05em;">계산 방식 (선형 보간법 적용)</span><br>
-                1단지의 현재 공정률을 2단지는 언제 달성했었는지 계산하여 공사 시차를 추정<br>
+                1단지의 현재 공정률을 2단지는 언제 달성했었는지 계산하여 공사 시차 추정<br>
                 
                 <div class="scroll-responsive" style="text-align: center; margin: 15px 0; font-size: 1.1em; padding: 10px 0;">
                     $$추정 지연일 = (P_{target} - P_0) \times \frac{\Delta D}{\Delta P}$$
@@ -109,11 +113,11 @@
                 
                 - $P_{target}$ : 1단지의 현재 공정률<br>
                 - $P_0$ : 2단지의 직전 달 공정률<br>
-                - $\Delta D$ : 지난 공지와 이번 공지 사이의 총 일수<br>
+                - $\Delta D$ : 지난 - 이번 공지 사이의 일수<br>
                 - $\Delta P$ : 그 기간 동안 2단지가 상승한 공정률
             </span>
             
-            <div class="table-title">전체 누적 공정률 및 추정 지연일</div>
+            <div class="table-title">전체 공정률 및 추정 지연일</div>
             <div class="scroll-responsive" id="history-table-container"></div>
         </div>
         
@@ -123,13 +127,13 @@
                 - 입주 예정일(A) : 1단지 (2028.5.31.), 2단지 (2028.6.30.)<br>
                 - 공정률 100% 달성 추정일(B) : 1단지 (<span id="pred-reach-date1" style="color: #2980b9; font-weight: bold;"></span>), 2단지 (<span id="pred-reach-date2" style="color: #2980b9; font-weight: bold;"></span>)<br>
                 - 입주 전 여유 기간(A-B) : 1단지 (<span id="pred-buffer1" style="color: #2980b9; font-weight: bold;"></span>), 2단지 (<span id="pred-buffer2" style="color: #2980b9; font-weight: bold;"></span>)<br>
-                - 2단지 공정률 100% 시점의 1단지 예상 공정률 : <span id="pred-prog1-at-A" style="font-weight: bold;"></span>% <span style="font-size: 0.95em; color: #e74c3c;">(추정 지연(일) : <span id="pred-delay-at-A" style="font-weight: bold;"></span>)</span><br><br>
+                - 2단지 공정률 100% 시점의 1단지 공정률(추정 지연일) 추정: <span id="pred-prog1-at-A" style="font-weight: bold;"></span>% <span style="font-size: 0.95em; color: #e74c3c;">(추정 지연(일) : <span id="pred-delay-at-A" style="font-weight: bold;"></span>)</span><br><br>
             </div>
             
             <span style="color: #444; font-size: 0.95em; line-height: 1.8;">
                 <span style="color: #2980b9; font-weight: bold; font-size: 1.05em;">계산 방식 (계절 가중치 적용)</span><br>
-                과거 실적을 분석하여 순수 공사 속도를 도출한 뒤, <br> 미래의 계절별 제약 조건(장마, 동절기 등)을 가중치로 적용하여 완공 시점을 추정합니다. <br>
-                추후 실제 데이터가 공시되면 해당 기간의 예측값은 실제값으로 자동 대체되어 예측 정밀도가 상승합니다.<br>
+                과거 실적 기반 공사 속도를 도출한 뒤, <br> 계절별 제약 조건(장마, 동절기 등)을 가중치로 적용하여 완공 시점을 추정 <br>
+                추후 실제 데이터가 공시되면 해당 기간의 예측값은 실제값으로 자동 대체, 계산<br>
                 
                 <div class="scroll-responsive" style="text-align: center; margin: 15px 0; font-size: 1.1em; padding: 10px 0;">
                     $$P_{future} = P_{now} + \sum (R_{base} \times W_{m})$$
@@ -144,15 +148,15 @@
                 &nbsp;&nbsp;· 0.7 적용 : 12, 1, 2월 (동절기)<br>
                 - 추정 그래프 기준일 : 매달 1일
             </span>
-        </div>
+        
 
-        <div class="table-title" style="margin-top: 40px;">공정률 실적 및 예상 추이 그래프<span style="font-size: 0.8em; color: #777; font-weight: normal;">(추정 그래프 기준일: 매달 1일)</span></div>
-        <div class="chart-scroll-wrapper">
-            <div class="chart-inner" id="monthlyPredictionChartContainer">
-                <canvas id="monthlyPredictionChart"></canvas>
+            <div class="table-title" style="margin-top: 40px;">공정률 실적 및 예상 추이 그래프<span style="font-size: 0.8em; color: #777; font-weight: normal;">(추정 그래프 기준일: 매달 1일)</span></div>
+            <div class="chart-scroll-wrapper">
+                <div class="chart-inner" id="monthlyPredictionChartContainer">
+                    <canvas id="monthlyPredictionChart"></canvas>
+                </div>
             </div>
         </div>
-
     </div>
 </div>
 
